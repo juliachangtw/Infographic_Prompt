@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 資訊圖表萬能提示詞生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Noto Sans TC", sans-serif;
+        background-color: #f0f4f8;
+      }
+      .gradient-text {
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+          0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transition: all 0.3s ease;
+      }
+      .card:hover {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      }
+      select,
+      input,
+      textarea {
+        transition: all 0.2s;
+      }
+      select:focus,
+      input:focus,
+      textarea:focus {
+        ring: 2px;
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+      }
+      .file-upload-wrapper {
+        position: relative;
+        overflow: hidden;
+        display: inline-block;
+      }
+      .file-upload-wrapper input[type="file"] {
+        font-size: 100px;
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .color-swatch {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .style-tag {
+        background-color: #e0e7ff;
+        color: #3730a3;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        display: inline-block;
+        margin-right: 4px;
+        margin-bottom: 4px;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen p-4 md:p-8">
+    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Left Column: Controls -->
+      <div class="space-y-6">
+        <div class="text-center lg:text-left mb-8">
+          <h1 class="text-3xl md:text-4xl font-bold mb-2">
+            📊 資訊圖表 <span class="gradient-text">萬能提示詞生成器</span>
+          </h1>
+          <p class="text-gray-600">
+            基於 100 種專業排版架構，為 Midjourney / DALL-E 3 生成精準指令。
+          </p>
+        </div>
+
+        <!-- Input Form -->
+        <div class="card p-6 space-y-5">
+          <!-- NEW: Image Style Analysis Section -->
+          <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+            <label
+              class="block text-sm font-bold text-indigo-900 mb-2 flex items-center gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              0. 視覺參考圖片 (Optional)
+            </label>
+            <div class="flex items-start gap-4">
+              <div
+                class="flex-shrink-0 w-24 h-24 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center border border-gray-300 relative group"
+                id="imagePreviewBox"
+              >
+                <span class="text-xs text-gray-400 text-center px-1"
+                  >無圖片</span
+                >
+                <img
+                  id="imagePreview"
+                  class="w-full h-full object-cover hidden"
+                />
+              </div>
+              <div class="flex-grow">
+                <div class="file-upload-wrapper w-full mb-2">
+                  <button
+                    class="w-full text-sm bg-white hover:bg-gray-50 text-indigo-600 font-medium px-4 py-2 rounded border border-indigo-200 shadow-sm transition-colors text-left flex justify-between items-center"
+                  >
+                    <span>上傳圖片分析風格與色調...</span>
+                    <span
+                      class="text-xs bg-indigo-100 px-2 py-0.5 rounded text-indigo-700"
+                      >Auto Analysis</span
+                    >
+                  </button>
+                  <input type="file" id="imageInput" accept="image/*" />
+                </div>
+
+                <!-- Analysis Results -->
+                <div id="analysisResults" class="hidden space-y-2">
+                  <!-- Colors -->
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-gray-500 w-10"
+                      >Palette:</span
+                    >
+                    <div class="flex gap-1" id="swatchContainer"></div>
+                  </div>
+                  <!-- Style Tags -->
+                  <div class="flex items-start gap-2">
+                    <span class="text-xs font-bold text-gray-500 w-10 mt-1"
+                      >Style:</span
+                    >
+                    <div id="styleTagsContainer" class="flex flex-wrap"></div>
+                  </div>
+                </div>
+
+                <p class="text-xs text-gray-500 mt-1" id="imageTip">
+                  上傳後將自動分析色彩、亮度與對比，推導視覺關鍵字。
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subject -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >1. 主題 (Subject)</label
+            >
+            <input
+              type="text"
+              id="subject"
+              placeholder="例如：生成式 AI 的發展歷史、咖啡豆的製作過程"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 text-gray-900 placeholder-gray-400"
+            />
+          </div>
+
+          <!-- Category & Layout -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >2. 排版類別 (Category)</label
+              >
+              <select
+                id="categorySelect"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+              >
+                <!-- JS will populate this -->
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >3. 圖表類型 (Layout)</label
+              >
+              <select
+                id="layoutSelect"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+              >
+                <!-- JS will populate this -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Visual Style -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >4. 視覺風格 (Visual Style)</label
+            >
+            <select
+              id="styleSelect"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+            >
+              <!-- JS will populate this -->
+            </select>
+            <div class="mt-2 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="useImageStyle"
+                class="rounded text-blue-600 focus:ring-blue-500"
+                disabled
+              />
+              <label
+                for="useImageStyle"
+                class="text-sm text-gray-600 cursor-pointer opacity-50"
+                id="useImageStyleLabel"
+                >應用分析出的「視覺屬性」到提示詞中</label
+              >
+            </div>
+          </div>
+
+          <!-- Data Source / Context Input -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block text-sm font-medium text-gray-700"
+                >5. 參考資料/數據 (Context & Data)</label
+              >
+              <div class="file-upload-wrapper">
+                <button
+                  class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded border border-gray-300 flex items-center gap-1 transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-3 w-3"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  讀取文字檔
+                </button>
+                <input
+                  type="file"
+                  id="fileInput"
+                  accept=".txt,.csv,.md,.json,.js,.html"
+                />
+              </div>
+            </div>
+            <textarea
+              id="dataInput"
+              rows="3"
+              placeholder="在此輸入圖表需要的數據、文字內容，或上傳文件自動填入..."
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 text-gray-900 placeholder-gray-400 text-sm font-mono"
+            ></textarea>
+            <p
+              class="text-xs text-gray-500 mt-1 text-right"
+              id="fileStatus"
+            ></p>
+          </div>
+
+          <!-- Details (Ratio, Color) -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >比例 (Aspect Ratio)</label
+              >
+              <select
+                id="ratio"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+              >
+                <option value="16:9">16:9 (橫向寬螢幕)</option>
+                <option value="3:2">3:2 (標準照片)</option>
+                <option value="1:1">1:1 (正方形)</option>
+                <option value="9:16">9:16 (手機直式)</option>
+                <option value="A4 Portrait (1:1.41)">A4 直式 (Portrait)</option>
+                <option value="A4 Landscape (1.41:1)">
+                  A4 橫式 (Landscape)
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >色調 (Color Palette)</label
+              >
+              <select
+                id="color"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+              >
+                <option value="default">請選擇或上傳圖片自動分析</option>
+                <option value="Vibrant Gradients">
+                  鮮豔漸層 (Vibrant Gradients)
+                </option>
+                <option value="Blue and White">
+                  專業藍白 (Blue and White)
+                </option>
+                <option value="Pastel Tones">柔和粉彩 (Pastel Tones)</option>
+                <option value="Dark Mode Neon">
+                  深色霓虹 (Dark Mode Neon)
+                </option>
+                <option value="Earth Tones">大地色系 (Earth Tones)</option>
+                <option value="Monochrome">單色極簡 (Monochrome)</option>
+                <option value="Corporate Professional">
+                  企業專業 (Corporate Professional)
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex gap-3 pt-2">
+            <button
+              id="randomBtn"
+              class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              隨機靈感
+            </button>
+            <button
+              id="generateBtn"
+              class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-lg shadow-blue-500/30 transition-all transform active:scale-95 flex items-center justify-center gap-2"
+            >
+              生成提示詞
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Output -->
+      <div class="flex flex-col h-full">
+        <div
+          class="card p-1 flex-grow flex flex-col relative overflow-hidden h-full"
+        >
+          <div
+            class="bg-gray-800 text-white px-4 py-2 rounded-t-lg flex justify-between items-center"
+          >
+            <span class="font-mono text-sm font-bold">Prompt Output</span>
+            <span class="text-xs text-gray-400">Markdown Format</span>
+          </div>
+          <textarea
+            id="output"
+            readonly
+            class="flex-grow w-full bg-gray-900 text-gray-100 font-mono text-sm p-4 border-none resize-none focus:ring-0 leading-relaxed"
+            spellcheck="false"
+          >
+等待生成...</textarea
+          >
+
+          <div class="absolute bottom-4 right-4">
+            <button
+              id="copyBtn"
+              class="px-6 py-2 bg-white text-gray-900 rounded-full font-bold shadow-lg hover:bg-gray-100 transition-all flex items-center gap-2 transform active:scale-95"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                />
+              </svg>
+              複製提示詞
+            </button>
+          </div>
+          <div
+            id="copyToast"
+            class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-80 text-white px-4 py-2 rounded-lg opacity-0 transition-opacity pointer-events-none"
+          >
+            已複製！
+          </div>
+        </div>
+
+        <div
+          class="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-100 text-xs text-yellow-800"
+        >
+          <strong>📝 圖片分析說明：</strong><br />
+          1.
+          <strong>風格偵測：</strong>
+          系統會依據圖片的亮度、飽和度與對比度，自動推算如「High Contrast
+          (高對比)」、「Minimalist (極簡)」等屬性。<br />
+          2.
+          <strong>使用方式：</strong>
+          勾選「應用視覺屬性」後，這些關鍵字會自動加入 Prompt
+          中，讓生成的風格更一致。
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden Canvas for Processing -->
+    <canvas id="canvas" class="hidden"></canvas>
+
+    <script>
+      // --- DATA SOURCE ---
+      const styles = [
+        { name: "扁平向量 (Flat Vector Art)", val: "Flat Vector Art" },
+        { name: "等距 3D (Isometric 3D)", val: "Isometric 3D" },
+        { name: "企業孟菲斯 (Corporate Memphis)", val: "Corporate Memphis" },
+        { name: "手繪草圖 (Hand-Drawn Sketch)", val: "Hand-Drawn Sketch" },
+        { name: "工程藍圖 (Blueprint Schematic)", val: "Blueprint Schematic" },
+        { name: "霓虹賽博龐克 (Neon Cyberpunk)", val: "Neon Cyberpunk" },
+        { name: "剪紙風格 (Paper Cutout)", val: "Paper Cutout" },
+        { name: "毛玻璃擬態 (Glassmorphism)", val: "Glassmorphism" },
+        { name: "低多邊形 (Low Poly)", val: "Low Poly" },
+        { name: "黑板粉筆 (Chalkboard Style)", val: "Chalkboard Style" },
+        { name: "復古地圖 (Vintage Map)", val: "Vintage Map Style" },
+        { name: "極簡線條 (Minimalist Line Art)", val: "Minimalist Line Art" },
+      ];
+
+      const layoutData = {
+        "一、線性與時序類 (Linear)": [
+          {
+            name: "水平時間軸 (Horizontal Timeline)",
+            val: "Horizontal Timeline",
+          },
+          { name: "垂直時間軸 (Vertical Timeline)", val: "Vertical Timeline" },
+          {
+            name: "蜿蜒道路圖 (Winding Road Roadmap)",
+            val: "Winding Road Roadmap",
+          },
+          { name: "S型/蛇形排版 (Snake Layout)", val: "Snake Layout" },
+          { name: "螺旋時間軸 (Spiral Timeline)", val: "Spiral Timeline" },
+          { name: "甘特圖風格 (Gantt Chart Style)", val: "Gantt Chart Style" },
+          { name: "階梯圖 (Step Ladder)", val: "Step Ladder" },
+          { name: "輸送帶示意圖 (Conveyor Belt)", val: "Conveyor Belt" },
+          {
+            name: "地鐵路線圖風格 (Subway Map Style)",
+            val: "Subway Map Style",
+          },
+          { name: "骨牌效應圖 (Domino Effect)", val: "Domino Effect" },
+        ],
+        "二、比較與對照類 (Comparison)": [
+          { name: "文氏圖 (Venn Diagram)", val: "Venn Diagram" },
+          {
+            name: "分割畫面比較 (Split Screen Comparison)",
+            val: "Split Screen Comparison",
+          },
+          { name: "T字表 (T-Chart)", val: "T-Chart" },
+          { name: "蝴蝶圖 (Butterfly Chart)", val: "Butterfly Chart" },
+          { name: "雷達圖 (Radar Chart)", val: "Radar Chart" },
+          { name: "天平圖 (Balance Scale)", val: "Balance Scale" },
+          { name: "使用前/後 (Before and After)", val: "Before and After" },
+          { name: "四象限矩陣 (Quadrant Matrix)", val: "Quadrant Matrix" },
+          {
+            name: "平行座標圖 (Parallel Coordinates)",
+            val: "Parallel Coordinates",
+          },
+          { name: "啞鈴圖 (Dumbbell Plot)", val: "Dumbbell Plot" },
+        ],
+        "三、層級與結構類 (Hierarchy)": [
+          {
+            name: "組織結構圖 (Organizational Chart)",
+            val: "Organizational Chart",
+          },
+          { name: "心智圖 (Mind Map)", val: "Mind Map" },
+          { name: "金字塔圖 (Pyramid Diagram)", val: "Pyramid Diagram" },
+          { name: "倒金字塔 (Inverted Pyramid)", val: "Inverted Pyramid" },
+          { name: "樹狀圖 (Tree Diagram)", val: "Tree Diagram" },
+          { name: "旭日圖 (Sunburst Chart)", val: "Sunburst Chart" },
+          { name: "矩形樹狀圖 (Treemap)", val: "Treemap" },
+          { name: "圓形填充圖 (Circle Packing)", val: "Circle Packing" },
+          { name: "巢狀圖 (Nested Boxes)", val: "Nested Boxes" },
+          { name: "冰柱圖 (Icicle Chart)", val: "Icicle Chart" },
+        ],
+        "四、流程與系統類 (Process)": [
+          { name: "流程圖 (Flowchart)", val: "Flowchart" },
+          { name: "桑基圖 (Sankey Diagram)", val: "Sankey Diagram" },
+          { name: "決策樹 (Decision Tree)", val: "Decision Tree" },
+          { name: "循環圖 (Cycle Diagram)", val: "Cycle Diagram" },
+          { name: "漏斗圖 (Funnel Chart)", val: "Funnel Chart" },
+          { name: "齒輪系統圖 (Gear System)", val: "Gear System" },
+          {
+            name: "電路圖風格 (Circuit Diagram Style)",
+            val: "Circuit Diagram Style",
+          },
+          { name: "泳道圖 (Swimlane Diagram)", val: "Swimlane Diagram" },
+          { name: "回饋迴圈 (Feedback Loop)", val: "Feedback Loop" },
+          { name: "演算法架構圖 (Algorithm Schema)", val: "Algorithm Schema" },
+        ],
+        "五、數據視覺化類 (Data Viz)": [
+          { name: "甜甜圈圖 (Donut Chart)", val: "Donut Chart" },
+          {
+            name: "爆炸圓餅圖 (Exploded Pie Chart)",
+            val: "Exploded Pie Chart",
+          },
+          { name: "堆疊條形圖 (Stacked Bar Chart)", val: "Stacked Bar Chart" },
+          { name: "面積圖 (Area Chart)", val: "Area Chart" },
+          { name: "散佈圖 (Scatter Plot)", val: "Scatter Plot" },
+          { name: "氣泡圖 (Bubble Chart)", val: "Bubble Chart" },
+          { name: "熱力圖 (Heatmap)", val: "Heatmap" },
+          { name: "瀑布圖 (Waterfall Chart)", val: "Waterfall Chart" },
+          { name: "儀表板圖 (Gauge Chart)", val: "Gauge Chart" },
+          { name: "象形統計圖 (Pictogram Chart)", val: "Pictogram Chart" },
+        ],
+        "六、地理與空間類 (Geography)": [
+          { name: "等值色塊地圖 (Choropleth Map)", val: "Choropleth Map" },
+          {
+            name: "點分佈地圖 (Dot Distribution Map)",
+            val: "Dot Distribution Map",
+          },
+          { name: "航線/連接地圖 (Connection Map)", val: "Connection Map" },
+          {
+            name: "等距城市地圖 (Isometric City Map)",
+            val: "Isometric City Map",
+          },
+          { name: "地鐵路線風格 (Metro Map Style)", val: "Metro Map Style" },
+          { name: "平面配置圖 (Floor Plan)", val: "Floor Plan" },
+          { name: "等高線圖 (Topographic Map)", val: "Topographic Map" },
+          { name: "全球網絡圖 (Global Network)", val: "Global Network" },
+          { name: "流向地圖 (Flow Map)", val: "Flow Map" },
+          {
+            name: "奇幻地圖風格 (Fantasy Map Style)",
+            val: "Fantasy Map Style",
+          },
+        ],
+        "七、隱喻與概念類 (Metaphor)": [
+          { name: "冰山模型 (Iceberg Model)", val: "Iceberg Model" },
+          { name: "解剖圖 (Anatomy Cutaway)", val: "Anatomy Cutaway" },
+          { name: "橋樑隱喻 (Bridge Metaphor)", val: "Bridge Metaphor" },
+          { name: "拼圖隱喻 (Puzzle Jigsaw)", val: "Puzzle Jigsaw" },
+          {
+            name: "太陽系模型 (Solar System Model)",
+            val: "Solar System Model",
+          },
+          { name: "原子結構 (Atom Structure)", val: "Atom Structure" },
+          { name: "三明治分層 (Sandwich Layering)", val: "Sandwich Layering" },
+          { name: "迷宮圖 (Maze / Labyrinth)", val: "Maze / Labyrinth" },
+          { name: "瑞士刀隱喻 (Swiss Army Knife)", val: "Swiss Army Knife" },
+          {
+            name: "藍圖風格 (Construction Blueprint)",
+            val: "Construction Blueprint",
+          },
+        ],
+        "八、列表與資訊清單類 (List)": [
+          { name: "視覺化清單 (Infographic List)", val: "Infographic List" },
+          {
+            name: "週期表風格 (Periodic Table Style)",
+            val: "Periodic Table Style",
+          },
+          { name: "速查表 (Cheat Sheet)", val: "Cheat Sheet" },
+          { name: "檢查表排版 (Checklist Layout)", val: "Checklist Layout" },
+          { name: "構造標示 (Anatomy Labeling)", val: "Anatomy Labeling" },
+          { name: "卡片網格 (Card Grid)", val: "Card Grid" },
+          { name: "做與不做 (Do's and Don'ts)", val: "Do's and Don'ts" },
+          { name: "術語表排版 (Glossary Layout)", val: "Glossary Layout" },
+          { name: "食譜風格 (Recipe Style)", val: "Recipe Style" },
+          { name: "功能網格 (Feature Grid)", val: "Feature Grid" },
+        ],
+        "九、儀表板與綜合類 (Dashboard)": [
+          { name: "關鍵績效儀表板 (KPI Dashboard)", val: "KPI Dashboard" },
+          { name: "抬頭顯示器 (HUD Style)", val: "HUD (Heads-Up Display)" },
+          { name: "長條海報 (Infographic Poster)", val: "Infographic Poster" },
+          { name: "報紙排版 (Broadsheet Layout)", val: "Broadsheet Layout" },
+          { name: "人物誌卡片 (User Persona Card)", val: "User Persona Card" },
+          {
+            name: "顧客旅程地圖 (Customer Journey Map)",
+            val: "Customer Journey Map",
+          },
+          { name: "生態系地圖 (Ecosystem Map)", val: "Ecosystem Map" },
+          {
+            name: "商業模式畫布 (Business Model Canvas)",
+            val: "Business Model Canvas",
+          },
+          { name: "SWOT 分析圖 (SWOT Analysis)", val: "SWOT Analysis" },
+          {
+            name: "技術堆疊圖 (Tech Stack Layering)",
+            val: "Tech Stack Layering",
+          },
+        ],
+      };
+
+      // --- DOM ELEMENTS ---
+      const categorySelect = document.getElementById("categorySelect");
+      const layoutSelect = document.getElementById("layoutSelect");
+      const styleSelect = document.getElementById("styleSelect");
+      const subjectInput = document.getElementById("subject");
+      const dataInput = document.getElementById("dataInput");
+      const fileInput = document.getElementById("fileInput");
+      const fileStatus = document.getElementById("fileStatus");
+      const ratioSelect = document.getElementById("ratio");
+      const colorSelect = document.getElementById("color");
+      const generateBtn = document.getElementById("generateBtn");
+      const randomBtn = document.getElementById("randomBtn");
+      const outputArea = document.getElementById("output");
+      const copyBtn = document.getElementById("copyBtn");
+      const copyToast = document.getElementById("copyToast");
+
+      // New Image Elements
+      const imageInput = document.getElementById("imageInput");
+      const imagePreview = document.getElementById("imagePreview");
+      const imagePreviewBox = document.getElementById("imagePreviewBox");
+      const analysisResults = document.getElementById("analysisResults");
+      const swatchContainer = document.getElementById("swatchContainer");
+      const styleTagsContainer = document.getElementById("styleTagsContainer");
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const useImageStyle = document.getElementById("useImageStyle");
+      const useImageStyleLabel = document.getElementById("useImageStyleLabel");
+
+      let extractedColors = [];
+      let detectedStyleTags = [];
+
+      // --- INITIALIZATION ---
+      function init() {
+        // Populate Categories
+        for (const category in layoutData) {
+          const option = document.createElement("option");
+          option.value = category;
+          option.textContent = category;
+          categorySelect.appendChild(option);
+        }
+
+        // Populate Styles
+        styles.forEach((style) => {
+          const option = document.createElement("option");
+          option.value = style.val;
+          option.textContent = style.name;
+          styleSelect.appendChild(option);
+        });
+
+        updateLayouts();
+        generatePrompt();
+      }
+
+      function updateLayouts() {
+        const selectedCategory = categorySelect.value;
+        const layouts = layoutData[selectedCategory];
+        layoutSelect.innerHTML = "";
+        layouts.forEach((layout) => {
+          const option = document.createElement("option");
+          option.value = layout.val;
+          option.textContent = layout.name;
+          layoutSelect.appendChild(option);
+        });
+      }
+
+      // --- IMAGE HANDLING LOGIC ---
+      imageInput.addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          const img = new Image();
+          img.onload = function () {
+            // Show preview
+            imagePreview.src = img.src;
+            imagePreview.classList.remove("hidden");
+            imagePreviewBox.querySelector("span").classList.add("hidden");
+
+            // Process analysis
+            analyzeImage(img);
+
+            // Enable Style Checkbox
+            useImageStyle.disabled = false;
+            useImageStyleLabel.classList.remove("opacity-50");
+            useImageStyleLabel.classList.add("text-indigo-700", "font-medium");
+            useImageStyle.checked = true; // Auto check
+
+            generatePrompt();
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      function analyzeImage(img) {
+        // Resize image to canvas for performance
+        const SIZE = 100;
+        canvas.width = SIZE;
+        canvas.height = SIZE;
+        ctx.drawImage(img, 0, 0, SIZE, SIZE);
+
+        const imageData = ctx.getImageData(0, 0, SIZE, SIZE).data;
+        const colorMap = {};
+        let totalBrightness = 0;
+        let totalSaturation = 0;
+        let redSum = 0;
+        let blueSum = 0;
+        let validPixels = 0;
+
+        // Stats for variance/contrast
+        let brightnesses = [];
+
+        for (let i = 0; i < imageData.length; i += 4) {
+          if (imageData[i + 3] < 128) continue; // skip transparent
+
+          const r = imageData[i];
+          const g = imageData[i + 1];
+          const b = imageData[i + 2];
+
+          // 1. Color Quantization
+          const rQ = Math.round(r / 50) * 50;
+          const gQ = Math.round(g / 50) * 50;
+          const bQ = Math.round(b / 50) * 50;
+          const key = `${rQ},${gQ},${bQ}`;
+          colorMap[key] = (colorMap[key] || 0) + 1;
+
+          // 2. Brightness (Luminance)
+          const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+          totalBrightness += brightness;
+          brightnesses.push(brightness);
+
+          // 3. Saturation (HSV model approx)
+          const max = Math.max(r, g, b);
+          const min = Math.min(r, g, b);
+          const delta = max - min;
+          const saturation = max === 0 ? 0 : delta / max; // 0-1
+          totalSaturation += saturation;
+
+          // 4. Color Temp (Basic Red vs Blue)
+          redSum += r;
+          blueSum += b;
+
+          validPixels++;
+        }
+
+        if (validPixels === 0) return;
+
+        // -- Extract Colors --
+        const sortedColors = Object.entries(colorMap)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map((entry) => {
+            const [r, g, b] = entry[0].split(",").map(Number);
+            return rgbToHex(r, g, b);
+          });
+        extractedColors = sortedColors;
+
+        // -- Analyze Style Attributes --
+        const avgBrightness = totalBrightness / validPixels; // 0-255
+        const avgSaturation = (totalSaturation / validPixels) * 100; // 0-100
+
+        // Calculate Contrast (Standard Deviation of Brightness)
+        const mean = avgBrightness;
+        const variance =
+          brightnesses.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) /
+          validPixels;
+        const stdDev = Math.sqrt(variance);
+
+        const tempDiff = (redSum - blueSum) / validPixels; // +Warm, -Cool
+
+        // -- Map to Tags --
+        let tags = [];
+
+        // Brightness Tags
+        if (avgBrightness < 60) tags.push("Dark Mode", "Moody", "Night Theme");
+        else if (avgBrightness > 190)
+          tags.push("High Key", "Clean Background", "Minimalist");
+
+        // Saturation Tags
+        if (avgSaturation > 60)
+          tags.push("Vibrant", "High Saturation", "Pop Style");
+        else if (avgSaturation < 15)
+          tags.push("Monochrome", "Muted Tones", "Professional");
+        else if (avgSaturation < 30) tags.push("Low Saturation", "Subtle");
+
+        // Contrast Tags
+        if (stdDev > 60) tags.push("High Contrast", "Dramatic Lighting");
+        else if (stdDev < 25) tags.push("Flat Lighting", "Soft Shadows");
+
+        // Temperature Tags
+        if (tempDiff > 30) tags.push("Warm Tone");
+        else if (tempDiff < -30) tags.push("Cool Tone");
+
+        detectedStyleTags = tags;
+
+        // -- UI Update --
+        swatchContainer.innerHTML = "";
+        sortedColors.forEach((hex) => {
+          const span = document.createElement("span");
+          span.className = "color-swatch";
+          span.style.backgroundColor = hex;
+          span.title = hex;
+          swatchContainer.appendChild(span);
+        });
+
+        styleTagsContainer.innerHTML = "";
+        tags.forEach((tag) => {
+          const span = document.createElement("span");
+          span.className = "style-tag";
+          span.textContent = tag;
+          styleTagsContainer.appendChild(span);
+        });
+
+        analysisResults.classList.remove("hidden");
+
+        // Auto-select extracted color option
+        let customOption = colorSelect.querySelector(
+          'option[value="custom_extracted"]'
+        );
+        if (!customOption) {
+          customOption = document.createElement("option");
+          customOption.value = "custom_extracted";
+          colorSelect.appendChild(customOption);
+        }
+        customOption.textContent = `✅ 圖片分析色調`;
+        colorSelect.value = "custom_extracted";
+      }
+
+      function rgbToHex(r, g, b) {
+        return (
+          "#" +
+          ((1 << 24) + (r << 16) + (g << 8) + b)
+            .toString(16)
+            .slice(1)
+            .toUpperCase()
+        );
+      }
+
+      // --- FILE CONTENT HANDLING ---
+      fileInput.addEventListener("change", function (event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const content = e.target.result;
+          const existing = dataInput.value;
+          const separator = existing ? "\n\n" : "";
+          dataInput.value =
+            existing + separator + `[File: ${file.name}]\n` + content;
+          fileStatus.textContent = `已讀取: ${file.name}`;
+          fileStatus.className = "text-xs text-green-600 mt-1 text-right";
+          generatePrompt();
+        };
+        reader.readAsText(file);
+      });
+
+      // --- MAIN GENERATOR ---
+      function generatePrompt() {
+        const subject = subjectInput.value.trim() || "[Insert Subject Here]";
+        const layout = layoutSelect.value;
+        const style = styleSelect.value;
+        const ratio = ratioSelect.value;
+        let color = colorSelect.value;
+        const dataContext = dataInput.value.trim();
+        const useRefImage = useImageStyle.checked && !useImageStyle.disabled;
+
+        // Handle Custom Color Logic
+        let colorString = color;
+        if (color === "custom_extracted" && extractedColors.length > 0) {
+          colorString = `Custom Palette extracted from reference: ${extractedColors.join(
+            ", "
+          )}`;
+        } else if (color === "default" || color === "custom_extracted") {
+          colorString = "Vibrant and Professional"; // Fallback
+        }
+
+        let prompt = `**Prompt:**
+Create a professional infographic.
+
+**Subject:** ${subject}
+**Layout/Chart Type:** ${layout}
+**Visual Style:** ${style}`;
+
+        if (useRefImage) {
+          // Add Detected Style Tags to prompt
+          if (detectedStyleTags.length > 0) {
+            prompt += `, ${detectedStyleTags.join(", ")}`;
+          }
+          prompt += `\n**Style Reference:** Please analyze the attached image and replicate its visual style, composition, lighting, and mood.`;
+        }
+
+        prompt += `
+**Aspect Ratio:** ${ratio}
+**Language:** Traditional Chinese labels (繁體中文)
+**Color Palette:** ${colorString}`;
+
+        if (dataContext) {
+          prompt += `\n**Content & Data Source:**\n${dataContext}`;
+        }
+
+        prompt += `\n**Details:** High resolution, 4k, clean background, clearly defined sections, minimalistic icons, visual hierarchy, aesthetically pleasing composition.`;
+
+        outputArea.value = prompt;
+      }
+
+      function randomize() {
+        const subjects = [
+          "Evolution of AI",
+          "Coffee Brewing Methods",
+          "Sustainable Energy Types",
+          "History of the Internet",
+          "Healthy Eating Pyramid",
+          "Remote Work Benefits",
+          "Cybersecurity Basics",
+          "Blockchain Explained",
+        ];
+        subjectInput.value =
+          subjects[Math.floor(Math.random() * subjects.length)];
+
+        const categories = Object.keys(layoutData);
+        const randomCat =
+          categories[Math.floor(Math.random() * categories.length)];
+        categorySelect.value = randomCat;
+        updateLayouts();
+
+        const layouts = layoutData[randomCat];
+        layoutSelect.value =
+          layouts[Math.floor(Math.random() * layouts.length)].val;
+
+        styleSelect.value =
+          styles[Math.floor(Math.random() * styles.length)].val;
+
+        const ratios = ratioSelect.options;
+        ratioSelect.selectedIndex = Math.floor(Math.random() * ratios.length);
+
+        // Don't randomize color if we have extracted colors
+        if (colorSelect.value !== "custom_extracted") {
+          const colors = colorSelect.options;
+          let randIndex = Math.floor(Math.random() * (colors.length - 2)) + 1;
+          colorSelect.selectedIndex = randIndex;
+        }
+
+        dataInput.value = "";
+        fileStatus.textContent = "";
+
+        generatePrompt();
+      }
+
+      function copyToClipboard() {
+        outputArea.select();
+        document.execCommand("copy");
+        copyToast.style.opacity = "1";
+        setTimeout(() => {
+          copyToast.style.opacity = "0";
+        }, 2000);
+      }
+
+      // --- EVENT LISTENERS ---
+      categorySelect.addEventListener("change", updateLayouts);
+      generateBtn.addEventListener("click", generatePrompt);
+      randomBtn.addEventListener("click", randomize);
+      copyBtn.addEventListener("click", copyToClipboard);
+
+      [
+        layoutSelect,
+        styleSelect,
+        ratioSelect,
+        colorSelect,
+        useImageStyle,
+      ].forEach((el) => {
+        el.addEventListener("change", generatePrompt);
+      });
+
+      init();
+    </script>
+  </body>
+</html>
